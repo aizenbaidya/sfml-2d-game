@@ -4,7 +4,7 @@ GameTile::GameTile(const sf::Texture& texture, sf::IntRect textureRect, sf::Vect
 	sprite.setTexture(texture);
 	sprite.setTextureRect(textureRect);
 	sprite.setPosition(position);
-	sprite.setScale(3.0f, 3.0f);
+	sprite.setScale(TILE_SCALE, TILE_SCALE);
 }
 
 void GameTile::setPosition(float x, float y) {

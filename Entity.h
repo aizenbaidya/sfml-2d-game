@@ -3,12 +3,14 @@
 
 #include <SFML/Graphics.hpp>
 
+/**
+ * @brief This class represents a drawable entity.
+ *
+ * Derived classes must implement update logic.
+ */
 class Entity : public sf::Drawable {
 public:
-	virtual ~Entity() = default;
-	virtual void update(sf::Time deltaTime) = 0;
-	virtual void setPosition(float x, float y) = 0;
-	virtual sf::Vector2f getPosition() const = 0;
+	virtual sf::Vector2f getPosition() const;
 
 protected:
 	sf::Texture texture;
@@ -16,6 +18,7 @@ protected:
 
 private:
 	virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
+	virtual void update(sf::Time deltaTime) = 0;
 };
 
 #endif

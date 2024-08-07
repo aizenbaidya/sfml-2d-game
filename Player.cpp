@@ -1,6 +1,6 @@
 #include "Player.h"
-#include <iostream>
 #include <cmath>
+#include <iostream>
 
 Player::Player() {
 	if (!texture.loadFromFile("assets/Character-Spritesheet.png")) {
@@ -8,80 +8,90 @@ Player::Player() {
 	}
 
 	sprite.setTexture(texture);
-	sprite.setTextureRect(sf::IntRect(0, 0, ORIGINAL_FRAME_WIDTH, ORIGINAL_FRAME_HEIGHT));
+	sprite.setTextureRect(sf::IntRect(PLAYER_OFFSET, PLAYER_OFFSET, ORIGINAL_PLAYER_SIZE, ORIGINAL_PLAYER_SIZE));
 	sprite.setScale(ENLARGEMENT_SCALE, ENLARGEMENT_SCALE);
-	sprite.setPosition(GameDriver::WINDOW_WIDTH / 2.0f - SCALED_FRAME_WIDTH / 2.0f,
-		GameDriver::WINDOW_HEIGHT / 2.0f - SCALED_FRAME_HEIGHT / 2.0f);
+	sprite.setPosition((GameWorld::MAP_WIDTH - SCALED_PLAYER_SIZE) / 2.0f, (GameWorld::MAP_HEIGHT - SCALED_PLAYER_SIZE) / 2.0f);
 
-	hitbox.setSize(sf::Vector2f(static_cast<float>(SCALED_FRAME_WIDTH), static_cast<float>(SCALED_FRAME_HEIGHT)));
+	hitbox.setSize(sf::Vector2f(static_cast<float>(SCALED_PLAYER_SIZE), static_cast<float>(SCALED_PLAYER_SIZE)));
 	hitbox.setFillColor(sf::Color::Transparent);
 	hitbox.setOutlineColor(sf::Color::Red);
 	hitbox.setOutlineThickness(2.0f);
 	hitbox.setPosition(sprite.getPosition());
-
-	hitbox2.setSize(sf::Vector2f(static_cast<float>(ORIGINAL_FRAME_WIDTH), static_cast<float>(ORIGINAL_FRAME_HEIGHT)));
-	hitbox2.setFillColor(sf::Color::Transparent);
-	hitbox2.setOutlineColor(sf::Color::Blue);
-	hitbox2.setOutlineThickness(2.0f);
-	hitbox2.setPosition(sprite.getPosition().x + ORIGINAL_FRAME_WIDTH, sprite.getPosition().y + ORIGINAL_FRAME_HEIGHT);
 }
 
 void Player::update(sf::Time deltaTime) {
-	sf::Vector2f movement(0.0f, 0.0f);
+	handleInput();
+	normalizeMovement();
+	updateState();
+	move(deltaTime);
+	updateAnimation(deltaTime);
+}
 
+void Player::drawHitbox(sf::RenderWindow& window) {
+	window.draw(hitbox);
+}
+
+void Player::handleInput() {
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
 		movement.y += MOVEMENT_SPEED;
-		currentRow = 0;
+		spriteSheetRowIndex = 0;
 	}
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
 		movement.y -= MOVEMENT_SPEED;
-		currentRow = 1;
+		spriteSheetRowIndex = 1;
 	}
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
 		movement.x += MOVEMENT_SPEED;
-		currentRow = 3;
+		spriteSheetRowIndex = 3;
 	}
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
 		movement.x -= MOVEMENT_SPEED;
-		currentRow = 2;
+		spriteSheetRowIndex = 2;
 	}
+}
 
+void Player::normalizeMovement() {
 	// Normalize movement vector if necessary.
 	if (movement.x != 0.0f && movement.y != 0.0f) {
 		movement /= std::sqrt(2.0f);
 	}
+}
 
-	if (movement != sf::Vector2f(0.0f, 0.0f)) {
-		currentState = Walking;
+void Player::updateState() {
+	if (movement.x != 0 || movement.y != 0) {
+		currentState = State::Walking;
 	}
 	else {
-		currentState = Idle;
+		currentState = State::Idle;
 	}
+}
 
+void Player::move(sf::Time deltaTime) {
 	sprite.move(movement * deltaTime.asSeconds());
 	hitbox.move(movement * deltaTime.asSeconds());
-	hitbox2.move(movement * deltaTime.asSeconds());
 
-	elapsedTime += deltaTime.asSeconds();
-	if (elapsedTime >= ANIMATION_SPEED) {
-		elapsedTime = 0.0f;
-		int frameStart = (currentState == Walking) ? 2 : 0;
-		currentFrame = (currentFrame + 1) % 2 + frameStart;
-		sprite.setTextureRect(sf::IntRect(currentFrame * ORIGINAL_FRAME_WIDTH, currentRow * ORIGINAL_FRAME_HEIGHT,
-			ORIGINAL_FRAME_WIDTH, ORIGINAL_FRAME_HEIGHT));
+	// Reset the movement vector to 0 to ensure the player only moves when pressing the movement keys.
+	// Without resetting, the player would keep moving even when no keys are pressed
+	movement.x = 0;
+	movement.y = 0;
+}
+
+void Player::updateAnimation(sf::Time deltaTime) {
+	timeSinceLastAnimation += deltaTime.asSeconds();
+
+	// Check if it's time to update the animation frame.
+	if (timeSinceLastAnimation >= ANIMATION_UPDATE_INTERVAL_SEC) {
+		timeSinceLastAnimation = 0.0f;
+
+		// Calculate the starting column for the sprite sheet based on the player's state.
+		int startingSpriteSheetCol = (currentState == State::Walking) ? WALKING_SPRITE_START_COL : IDLE_SPRITE_START_COL;
+
+		// Update the sprite sheet column index for the next frame, wrapping around if needed.
+		spriteSheetColIndex = (spriteSheetColIndex + 1) % SPRITE_FRAME_COUNT + startingSpriteSheetCol;
+
+		sprite.setTextureRect(sf::IntRect(spriteSheetColIndex * ORIGINAL_FRAME_SIZE + PLAYER_OFFSET,
+			spriteSheetRowIndex * ORIGINAL_FRAME_SIZE + PLAYER_OFFSET,
+			ORIGINAL_PLAYER_SIZE,
+			ORIGINAL_PLAYER_SIZE));
 	}
-}
-
-void Player::draw(sf::RenderWindow& window) {
-	window.draw(sprite);
-	window.draw(hitbox);
-	window.draw(hitbox2);
-}
-
-void Player::setPosition(float x, float y) {
-	sprite.setPosition(x, y);
-}
-
-sf::Vector2f Player::getPosition() const {
-	return sprite.getPosition();
 }
